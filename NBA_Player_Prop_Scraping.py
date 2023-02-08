@@ -11,7 +11,10 @@ from datetime import timedelta
 import re
 from selenium.webdriver.common.by import By
 
-MASTER = pd.read_excel('Player_Prop_Data.xlsx', index_col=0)
+try:
+    MASTER = pd.read_excel('Player_Prop_Data.xlsx', index_col=0)
+except:
+    MASTER = pd.DataFrame()
 
 try:
     start_date = MASTER['DATE'].max()+timedelta(days=1)
@@ -27,6 +30,18 @@ for _date_ in dates:
     DRIVER.get(URL)
     WebDriverWait(DRIVER, 30).until(EC.presence_of_element_located((By.XPATH,"/html/body/div[2]/main/div/div/div[1]/div[2]/div[1]/div")))
     time.sleep(2)
+
+    found_data = DRIVER.find_elements(By.ID, 'primary-info-container')
+
+
+
+
+
+
+
+
+
+
     date_html = DRIVER.page_source
     date_soup = BeautifulSoup(date_html, 'html.parser')
     
