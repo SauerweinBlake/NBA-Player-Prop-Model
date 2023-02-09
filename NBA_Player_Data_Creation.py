@@ -18,8 +18,8 @@ def Hit_Calculation(stat_val, prop_val):
     else:
         return 2
 
-NBA_PLAYER_DATA = pd.read_excel('NBA_Player_Data.xlsx', index_col=0)
-NBA_PLAYER_PROP = pd.read_excel('Player_Prop_Data.xlsx', index_col=0)
+NBA_PLAYER_DATA = pd.read_excel('Excels\NBA_Player_Data.xlsx', index_col=0)
+NBA_PLAYER_PROP = pd.read_excel('Excels\Player_Prop_Data.xlsx', index_col=0)
 
 merge_data = NBA_PLAYER_DATA.merge(NBA_PLAYER_PROP, on=['Player_Name','GAME_DATE'], how='inner')
 ### REMOVE AFTER NEXT FULL PLAYER PROP REFRESH ###
@@ -84,4 +84,5 @@ for player in NBA_PLAYER_DATA['Player_ID'].unique():
         else:
             FULL_RESULTS = pd.concat([FULL_RESULTS, full_player_gamelog], axis=0)
             
-FULL_RESULTS.to_excel('THE BIG ONE.xlsx')
+FULL_RESULTS.to_excel('Excels\THE BIG ONE.xlsx')
+FULL_RESULTS.to_csv('CSVs\THE_BIG_ONE.csv')

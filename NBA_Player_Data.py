@@ -71,4 +71,5 @@ MASTER['HA'] = [1 if x.split(' ')[1] =='@' else 0 for x in MASTER['MATCHUP']]
 MASTER['WL'] = [1 if x == 'W' else 0 for x in MASTER['WL']]
 MASTER.drop(['VIDEO_AVAILABLE', 'FG_PCT', 'FG3_PCT', 'FT_PCT'], axis=1, inplace=True)
 
-MASTER.to_excel('NBA_Player_Data.xlsx')
+MASTER.to_excel('Excels\NBA_Player_Data.xlsx')
+MASTER.to_csv('CSVs\NBA_Player_Data.csv')
