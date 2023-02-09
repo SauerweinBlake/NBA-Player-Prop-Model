@@ -1,3 +1,5 @@
+#%%
+# Import Libraries
 from bs4 import BeautifulSoup
 import time
 from selenium import webdriver
@@ -11,47 +13,48 @@ from datetime import timedelta
 import re
 from selenium.webdriver.common.by import By
 
+#%%
+# See if there is pre-existing data for Player Props
 try:
-    MASTER = pd.read_excel('Player_Prop_Data.xlsx', index_col=0)
+    MASTER = pd.read_excel('Excels/Player_Prop_Data.xlsx', index_col=0)
 except:
     MASTER = pd.DataFrame()
 
+#%%
+# Set the Start Date and date range
 try:
-    start_date = MASTER['DATE'].max()+timedelta(days=1)
+    start_date = MASTER['GAME_DATE'].max()+timedelta(days=1)
 except:
     start_date = '2022-02-05'
 
+dates = pd.date_range(start=start_date,end=date.today())
+
+#%%
+# Set Settings for Selenium Web Driver
 options = Options()
 DRIVER = webdriver.Chrome(options=options)
 
-dates = pd.date_range(start=start_date,end=date.today())
+#%%
+# Begin for loop, looping through each date
 for _date_ in dates:
     URL = f"https://www.bettingpros.com/nba/picks/prop-bets/?date={str(_date_).split(' ')[0]}"
     DRIVER.get(URL)
     WebDriverWait(DRIVER, 30).until(EC.presence_of_element_located((By.XPATH,"/html/body/div[2]/main/div/div/div[1]/div[2]/div[1]/div")))
     time.sleep(2)
-
-    found_data = DRIVER.find_elements(By.ID, 'primary-info-container')
-
-
-
-
-
-
-
-
-
-
-    date_html = DRIVER.page_source
-    date_soup = BeautifulSoup(date_html, 'html.parser')
+# Find the number of pages of props for that specific Date
+    pages = DRIVER.find_element(By.XPATH, '//*[@id="props-app"]/div/div[2]/span').text.split(' ')[-1]
     
-    pages = date_soup.find_all('span', "class" == "pbcs-page-pagination__text")
-    pages = int(re.findall("Page........", str(pages))[0].split('<')[0].split(' ')[-1])
-    
+#%%
     full_day_props = pd.DataFrame(columns=['date','player_name','stat','val'])
     temp_df = pd.DataFrame(columns=['date','player_name','stat','val'])
     if pages != 0:
         for pag_num in range(1,pages+1,1):
+            found_props = DRIVER.find_elements(By.ID, 'primary-info-container')
+            for player_prop_row in found_props:
+                player_prop_row.findElements(By.XPATH, './child::*')
+#%%
+
+
             time.sleep(2)
             page_html = DRIVER.page_source
             page_soup = BeautifulSoup(page_html, 'html.parser')
@@ -188,3 +191,5 @@ for _date_ in dates:
             MASTER = pd.concat([MASTER, prop_df], axis=0, ignore_index=True)
 
 MASTER.to_excel('Player_Prop_Data.xlsx')
+
+# %%
