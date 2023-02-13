@@ -1,3 +1,5 @@
+#%%
+# Import Libraries
 import pandas as pd
 import numpy as np
 import time
@@ -8,6 +10,7 @@ from nba_api.stats.endpoints import playergamelog
 from nba_api.stats.library.parameters import SeasonAll
 from nba_api.stats.endpoints import commonplayerinfo
 
+#%%
 # Function to retrieve the Team ID based on the abbreviation
 def Retrieve_Team_ID(team_abbr):
     try:
@@ -15,10 +18,14 @@ def Retrieve_Team_ID(team_abbr):
     except:
         return np.nan
 
+#%%
+# Create DataFrame and get list of active players and teams
 MASTER = pd.DataFrame()
 NBA_PLAYERS = [x for x in players.get_active_players()]
 NBA_TEAMS = [x for x in teams.get_teams()]
 
+#%%
+# Loop through each Active player and retrieve their entire career of gamelogs
 for player in NBA_PLAYERS:
     player_id = str(player['id'])
     player_name = str(player['full_name'])
@@ -56,20 +63,22 @@ for player in NBA_PLAYERS:
         
         gamelog['Off_Days'] = gamelog["GAME_DATE"].diff().apply(lambda x: x/np.timedelta64(1, 'D')).fillna(0).astype('int64')
         gamelog['Off_Days'] = [0 if x > 100 else x for x in gamelog['Off_Days']]
-        gamelog['TEAM'] = [x.split(' ')[0] for x in gamelog.MATCHUP]
         gamelog['TEAM_ID'] = [Retrieve_Team_ID(x) for x in gamelog['TEAM']]
         
         MASTER = pd.concat([MASTER, gamelog], axis=0, ignore_index=True)
         
         print("COMPLETE...",end='')
         
-MASTER['POS_CODE'] = MASTER['POS'].astype('category').cat.codes
-MASTER['TEAM_ID'] = [Retrieve_Team_ID(x) for x in MASTER['TEAM']]
-MASTER['OPP'] = [x.split(' ')[2] for x in MASTER['MATCHUP']]
-MASTER['OPP_ID'] = [Retrieve_Team_ID(x) for x in MASTER['OPP']]
-MASTER['HA'] = [1 if x.split(' ')[1] =='@' else 0 for x in MASTER['MATCHUP']]
-MASTER['WL'] = [1 if x == 'W' else 0 for x in MASTER['WL']]
+# MASTER['POS_CODE'] = MASTER['POS'].astype('category').cat.codes
+# MASTER['TEAM_ID'] = [Retrieve_Team_ID(x) for x in MASTER['TEAM']]
+# MASTER['OPP'] = [x.split(' ')[2] for x in MASTER['MATCHUP']]
+# MASTER['OPP_ID'] = [Retrieve_Team_ID(x) for x in MASTER['OPP']]
+# MASTER['HA'] = [1 if x.split(' ')[1] =='@' else 0 for x in MASTER['MATCHUP']]
+# MASTER['WL'] = [1 if x == 'W' else 0 for x in MASTER['WL']]
 MASTER.drop(['VIDEO_AVAILABLE', 'FG_PCT', 'FG3_PCT', 'FT_PCT'], axis=1, inplace=True)
 
-MASTER.to_excel('Excels\NBA_Player_Data.xlsx')
-MASTER.to_csv('CSVs\NBA_Player_Data.csv')
+#%%
+# Create the DataFrame as an Excel and CSV file
+MASTER.to_excel('Excels/NBA_Player_Data.xlsx')
+MASTER.to_csv('CSVs/NBA_Player_Data.csv')
+#%%
