@@ -13,6 +13,17 @@ from datetime import timedelta
 import re
 from selenium.webdriver.common.by import By
 
+# Calculate Odds of the opposite bet, given the original odds, 4.5% vig
+def Odds_Vig_Calc(odds):
+    if odds < 0:
+        vig_odds = int((100*((191 * abs(odds)) - 900)) / ((9 * abs(odds)) + 20900))
+        if vig_odds < 100:
+            return (-100) - (100 - vig_odds)
+        else:
+            return vig_odds
+    else:
+        return int((100 * ((209 * abs(odds)) + 900)) / ((9 * abs(odds)) - 19100))
+
 def Stat_Switch_Case(stat):
     if stat == 'Pts':
         return 'PTS_PROP'
@@ -35,19 +46,25 @@ def Stat_Switch_Case(stat):
     elif stat == 'Reb + Ast':
         return 'RA_PROP'
 
+def Odds_Switch_Case(odds, odds_for):
+    return [odds, Odds_Vig_Calc(odds)] if odds_for == 'O' else [Odds_Vig_Calc(odds), odds]
+
 #%%
 # See if there is pre-existing data for Player Props
 try:
-    MASTER = pd.read_excel('Excels/Player_Prop_Data.xlsx', index_col=0)
+    MASTER = pd.read_csv('CSVs/Player_Prop_Data.csv', index_col=0)
 except:
-    MASTER = pd.DataFrame()
+    MASTER = pd.DataFrame(columns=['GAME_DATE','Player_Name', 'MATCHUP',
+                                    'PTS_PROP','REB_PROP','AST_PROP','BLK_PROP','STL_PROP',
+                                    '3PTS_PROP','PRA_PROP','PR_PROP','PA_PROP','RA_PROP'])
 
 #%%
 # Set the Start Date and date range
-try:
-    start_date = MASTER['GAME_DATE'].max()+timedelta(days=1)
-except:
+if MASTER.empty:
     start_date = '2022-02-05'
+else:
+    MASTER['GAME_DATE'] = pd.to_datetime(MASTER['GAME_DATE'])
+    start_date = MASTER['GAME_DATE'].max()+timedelta(days=1)
 
 dates = pd.date_range(start=start_date,end=date.today())
 
@@ -61,46 +78,50 @@ DRIVER = webdriver.Chrome(options=options)
 for _date_ in dates:
     URL = f"https://www.bettingpros.com/nba/picks/prop-bets/?date={str(_date_).split(' ')[0]}"
     DRIVER.get(URL)
-    WebDriverWait(DRIVER, 30).until(EC.presence_of_element_located((By.XPATH,"/html/body/div[2]/main/div/div/div[1]/div[2]/div[1]/div")))
-    time.sleep(2)
+    WebDriverWait(DRIVER, 30).until(EC.presence_of_element_located((By.XPATH,'//*[@id="props-app"]/div/div[1]/div[2]/div[7]/div/div/div/button/span')))
 
-    # Find the number of pages of props for that specific Date
-    pages = int(DRIVER.find_element(By.XPATH, '//*[@id="props-app"]/div/div[2]/span').text.split(' ')[-1])
+    try:
+        if DRIVER.find_element(By.XPATH, '//*[@id="props-app"]/div/div[1]/div[2]/div[7]/div/div/div/button/span').text != 'ALL':
+            DRIVER.find_element(By.XPATH, '//*[@id="props-app"]/div/div[1]/div[2]/div[7]/div/div/div/button').click()
+            DRIVER.find_element(By.XPATH, '//*[@id="props-app"]/div/div[1]/div[2]/div[7]/div/div/div/ul/li[1]').click()
+            WebDriverWait(DRIVER, 5).until(EC.presence_of_element_located((By.XPATH,'//*[@id="props-app"]/div/div[1]/div[2]/div[7]/div/div/div/button/span')))
 
-    for ref in range(pages-1):
-        found_props = DRIVER.find_elements(By.ID, 'primary-info-container')
-        for player_prop_row in found_props:
-            player_info = player_prop_row.find_elements(By.XPATH, './child::*')[0].text
-            player_prop_info = player_prop_row.find_elements(By.XPATH, './child::*')[1].text
+        # Find the number of pages of props for that specific Date
+        pages = int(DRIVER.find_element(By.XPATH, '//*[@id="props-app"]/div/div[2]/span').text.split(' ')[-1])
+        for ref in range(pages-1):
+            found_props = DRIVER.find_elements(By.ID, 'primary-info-container')
+            for player_prop_row in found_props:
+                player_info = player_prop_row.find_elements(By.XPATH, './child::*')[0].text
+                player_prop_info = player_prop_row.find_elements(By.XPATH, './child::*')[1].text
 
-            # Retrieve all necessary data
-            matchup = player_info.split('\n')[0]
-            player = player_info.split('\n')[1]
-            teams = [matchup.split(' ')[0], matchup.split(' ')[-1]]
-            player_team = player_info.split('\n')[2].split(' ')[0]
-            opp_team = teams[0] if player_team == teams[1] else teams[1]
-            val = player_prop_info.split('\n')[0]
-            stat = Stat_Switch_Case(player_prop_info.split('\n')[1])
+                # Retrieve all necessary data
+                matchup = player_info.split('\n')[0]
+                player = player_info.split('\n')[1]
+                teams = [matchup.split(' ')[0], matchup.split(' ')[-1]]
+                player_team = player_info.split('\n')[2].split(' ')[0]
+                val = player_prop_info.split('\n')[0]
+                stat = Stat_Switch_Case(player_prop_info.split('\n')[1])
 
-            # Clean/Manipulate Data
-            matchup = f'{teams[0]} @ {teams[1]}' if player_team == teams[0] else f'{teams[1]} vs. {teams[0]}'
+                # Clean/Manipulate Data
+                matchup = f'{teams[0]} @ {teams[1]}' if player_team == teams[0] else f'{teams[1]} vs. {teams[0]}'
 
-            # If there is not a row for a player on the date, create one
-            if (MASTER[(MASTER['GAME_DATE'] == _date_) & (MASTER['Player_Name'] == player)]).empty:
-                MASTER.loc[len(MASTER)] = [_date_, player, matchup, player_team, opp_team, 
-                                            np.nan, np.nan, np.nan, np.nan, np.nan,
-                                            np.nan, np.nan, np.nan, np.nan, np.nan]
-            
-            idx = MASTER[(MASTER['GAME_DATE'] == _date_) & (MASTER['Player_Name'] == player)].index.tolist()
-            if len(idx) > 1:
-                print('NO WORK MORE THAN 1 IDX')
-            else:
+                # If there is not a row for a player on the date, create one
+                if (MASTER[(MASTER['GAME_DATE'] == _date_) & (MASTER['Player_Name'] == player)]).empty:
+                    MASTER.loc[len(MASTER)] = [_date_, player, matchup,
+                                                np.nan, np.nan, np.nan, np.nan, np.nan,
+                                                np.nan, np.nan, np.nan, np.nan, np.nan,]
+                    
+                idx = MASTER[(MASTER['GAME_DATE'] == _date_) & (MASTER['Player_Name'] == player)].index.tolist()
                 MASTER.at[idx[0], stat] = val
 
-        DRIVER.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        DRIVER.find_element(By.XPATH, '//*[@id="props-app"]/div/div[2]/button[2]/span/i').click()
+            DRIVER.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            DRIVER.find_element(By.XPATH, '//*[@id="props-app"]/div/div[2]/button[2]/span/i').click()
+    except:
+        # Empty
+        pass
 
 #%%
+# Create Excel and CSV Files from DataFrame
 MASTER.to_excel('Excels/Player_Prop_Data.xlsx')
 MASTER.to_csv('CSVs/Player_Prop_Data.csv')
 
