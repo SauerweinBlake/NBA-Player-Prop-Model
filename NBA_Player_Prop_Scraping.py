@@ -1,7 +1,5 @@
 #%%
 # Import Libraries
-from bs4 import BeautifulSoup
-import time
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.wait import WebDriverWait
@@ -10,10 +8,13 @@ import pandas as pd
 import numpy as np
 from datetime import date
 from datetime import timedelta 
-import re
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
 
+#%%
+# Define Functions
 # Calculate Odds of the opposite bet, given the original odds, 4.5% vig
+# NOT USED AS OF NOW, MAY BE MOVED TO ANOTHER .py
 def Odds_Vig_Calc(odds):
     if odds < 0:
         vig_odds = int((100*((191 * abs(odds)) - 900)) / ((9 * abs(odds)) + 20900))
@@ -24,6 +25,7 @@ def Odds_Vig_Calc(odds):
     else:
         return int((100 * ((209 * abs(odds)) + 900)) / ((9 * abs(odds)) - 19100))
 
+# Case Switch
 def Stat_Switch_Case(stat):
     if stat == 'Pts':
         return 'PTS_PROP'
@@ -45,9 +47,6 @@ def Stat_Switch_Case(stat):
         return 'PR_PROP'
     elif stat == 'Reb + Ast':
         return 'RA_PROP'
-
-def Odds_Switch_Case(odds, odds_for):
-    return [odds, Odds_Vig_Calc(odds)] if odds_for == 'O' else [Odds_Vig_Calc(odds), odds]
 
 #%%
 # See if there is pre-existing data for Player Props
@@ -79,12 +78,12 @@ for _date_ in dates:
     URL = f"https://www.bettingpros.com/nba/picks/prop-bets/?date={str(_date_).split(' ')[0]}"
     DRIVER.get(URL)
     WebDriverWait(DRIVER, 30).until(EC.presence_of_element_located((By.XPATH,'//*[@id="props-app"]/div/div[1]/div[2]/div[7]/div/div/div/button/span')))
-
+    
     try:
         if DRIVER.find_element(By.XPATH, '//*[@id="props-app"]/div/div[1]/div[2]/div[7]/div/div/div/button/span').text != 'ALL':
             DRIVER.find_element(By.XPATH, '//*[@id="props-app"]/div/div[1]/div[2]/div[7]/div/div/div/button').click()
             DRIVER.find_element(By.XPATH, '//*[@id="props-app"]/div/div[1]/div[2]/div[7]/div/div/div/ul/li[1]').click()
-            WebDriverWait(DRIVER, 5).until(EC.presence_of_element_located((By.XPATH,'//*[@id="props-app"]/div/div[1]/div[2]/div[7]/div/div/div/button/span')))
+            WebDriverWait(DRIVER, 30).until(EC.presence_of_element_located((By.XPATH,'//*[@id="props-app"]/div/div[1]/div[2]/div[7]/div/div/div/button/span')))
 
         # Find the number of pages of props for that specific Date
         pages = int(DRIVER.find_element(By.XPATH, '//*[@id="props-app"]/div/div[2]/span').text.split(' ')[-1])
@@ -116,9 +115,10 @@ for _date_ in dates:
 
             DRIVER.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             DRIVER.find_element(By.XPATH, '//*[@id="props-app"]/div/div[2]/button[2]/span/i').click()
-    except:
-        # Empty
-        pass
+    except NoSuchElementException:
+            pass
+
+DRIVER.quit()
 
 #%%
 # Create Excel and CSV Files from DataFrame
