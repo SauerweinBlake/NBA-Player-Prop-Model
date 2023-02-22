@@ -1,9 +1,7 @@
 #%%
 # Import Libraries
 import pandas as pd
-import numpy as np
 import time
-from datetime import date
 from nba_api.stats.static import players
 from nba_api.stats.static import teams
 from nba_api.stats.endpoints import playergamelog
