@@ -8,32 +8,32 @@ from sklearn.metrics import precision_score
 
 #%%
 # Import Data
-Master = pd.read_csv('CSVs/THE_BIG_ONE.csv', index_col=0)
+master = pd.read_csv('CSVs/full_per_game_data.csv', index_col=0)
 
 #%%
 # Clean Data
-Master['GAME_DATE'] = pd.to_datetime(Master['GAME_DATE'])
-
-#%%
-# Train Test Split
-train = Master[Master['GAME_DATE'] < pd.to_datetime('2023-02-01')]
-train.dropna(inplace=True)
-test = Master[Master['GAME_DATE'] >= pd.to_datetime('2023-02-01')]
-test.dropna(inplace=True)
-# date.today()
-to_be_predicted = Master[Master['GAME_DATE'] == pd.to_datetime('2023-02-14')]
-to_be_predicted['SEASON_ID'] = Master['SEASON_ID'].max()
-to_be_predicted = to_be_predicted[to_be_predicted['full_PTS_20'].notna()]
+master['GAME_DATE'] = pd.to_datetime(master['GAME_DATE'])
 
 #%%
 # Possibly keep Game_ID, but would need to get Game ID for any predictions for the day's games
-temp = Master.copy()
+temp = master.copy()
 temp.drop(['TEAM','OPP','GAME_DATE','WL','MIN','FGM','FGA','FG3M',
            'FG3A','FTM','FTA','OREB','DREB','REB','AST','STL',
            'BLK','TOV','PF','PTS','PLUS_MINUS','Player_Name','Game_ID',
-           'MATCHUP','POS'], axis=1, inplace=True)
+           'MATCHUP','POS','PTS_PROP','REB_PROP','AST_PROP',
+       'BLK_PROP','STL_PROP','3PTS_PROP','PRA_PROP','PR_PROP','PA_PROP','RA_PROP'], axis=1, inplace=True)
 feature_cols = list(temp.columns)
 
+#%%
+# Train Test Split
+train = master[master['GAME_DATE'] < '2023-02-01']
+train.dropna(inplace=True)
+test = master[(master['GAME_DATE'] >= '2023-02-01') & (master['GAME_DATE'] < '2023-02-16')]
+test[feature_cols].dropna(inplace=True)
+# date.today()
+to_be_predicted = master[master['GAME_DATE'] == '2023-02-16']
+
+#%%
 print("Training Points Random Forest Regressor")
 rfr_pts = RandomForestRegressor()
 rfr_pts.fit(train[feature_cols], train['PTS'])
